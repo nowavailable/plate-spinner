@@ -14,22 +14,21 @@ def read(filename):
 
 
 setup(
-    name="serial_stories_extractor",
+    name="plate-spinner",
     version="0.1.0",
     url="https://github.com/nowavailable/plate-spinner",
     license='MIT',
-
     author="Taiga Tsutsumi",
-    author_email="tsutsumitaiga@gmail.com",
-
+    author_email="nowavailable@users.noreply.github.com",
     description="",
     long_description=read("README.md"),
-
     packages=find_packages(exclude=('tests',)),
-
     install_requires=[
         "apscheduler",
-        "uvloop"
+        "uvloop",
+        'sqlalchemy',
+        "sqlalchemy-migrate",
+        'PyMySQL'
     ],
 
     classifiers=[
