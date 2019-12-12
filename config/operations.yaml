@@ -1,0 +1,72 @@
+---
+producer_jobs:
+  - # テーブル uri_applieds に溜まった何かしらのURL群を対象にクロールし、
+    # pivotページかどうか判定し、pivotページなら テーブル pivot_candidates にインサート。
+    # pivotページでなければ テーブル episode_candidates にインサート。
+    name: take_applied_uri
+    active: true
+    consumer_jobs:
+      - name: analyze_pivot_hypothesis
+    consumers_individual: true
+    working_limit: 50
+
+  - # テーブル pivot_candidates に溜まったURL群を対象に、
+    # そのメタデータ（含む子URL群へのアクセスのヒント）を参考にクロールし、
+    # episode_candidatesにデータをインサート。
+    name: analize_pivot_candidate
+    active: true
+    consumer_jobs:
+      - name: analyze_episode_hypothesis
+    consumers_individual: true
+    working_limit: 50
+
+  - # テーブル episode_candidates に溜まったURL群のうち、
+    # 親レコード（pivot_candidates）の無いレコードを対象に
+    # pivotページを探索してクロールし、
+    # 収穫されたページ群を分析してpivotページを推測。それを
+    # pivot_candidatesにインサート。
+    name: analizey_episode_candidate
+    active: true
+    consumer_jobs:
+      - name: explorer
+      - name: hypothesis_builder
+    consumers_individual: true
+    working_limit: 50
+
+#  - # pivot_candidatesとepisode_candidatesのリレーションが完成してるレコード群を対象に
+#    # 分析して、結論が確定したレコード群をpivotsテーブルとepisodesテーブルにインサート。
+#    name: confirmer
+#    active: true
+#    # consumer_jobs:
+#    consumers_individual: false
+#    working_limit: 10
+
+  - # 既存のpivotsテーブルのレコードを定期的に巡回。
+    # 新規のエピソードページがあれば、episodesテーブルにインサート
+    name: regular_run
+    active: true
+    consumer_jobs:
+      - name: analyze_pivot
+    consumers_individual: false
+    working_limit: 10
+
+#  - # 新規に溜まったepisodesテーブルのデータを通知処理。
+#    name: notifier
+#    consumers_individual: true
+#    working_limit: 100
+
+consumer_jobs:
+  -
+    name: analyze_pivot
+  -
+    name: analyze_episode
+  -
+    name: analyze_pivot_hypothesis
+  -
+    name: analyze_episode_hypothesis
+  -
+    name: explorer
+  -
+    name: hypothesis_builder
+
+working_limit: 400

@@ -14,7 +14,7 @@ def read(filename):
 
 
 setup(
-    name="plate-spinner",
+    name="plate_spinner",
     version="0.1.0",
     url="https://github.com/nowavailable/plate-spinner",
     license='MIT',
@@ -24,11 +24,13 @@ setup(
     long_description=read("README.md"),
     packages=find_packages(exclude=('tests',)),
     install_requires=[
-        "apscheduler",
-        "uvloop",
+        "scoop",
+        # "uvloop",
         'sqlalchemy',
         "sqlalchemy-migrate",
-        'PyMySQL'
+        'PyMySQL',
+        'Click>=6.0',
+        "PyYAML"
     ],
 
     classifiers=[
