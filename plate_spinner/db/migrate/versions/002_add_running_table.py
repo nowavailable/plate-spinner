@@ -10,7 +10,9 @@ running_table = Table(
     Column("id", BIGINT(unsigned=True), primary_key=True),
     Column("hostname", VARCHAR(255), nullable=False),
     Column("process_id_str", VARCHAR(255), nullable=False),
-    Column("created_at", DATETIME, nullable=False)
+    Column("emergency", BOOLEAN, nullable=False, default=False),
+    Column("created_at", DATETIME, nullable=False),
+    Column("updated_at", DATETIME, nullable=False)
 )
 
 def upgrade(migrate_engine):
