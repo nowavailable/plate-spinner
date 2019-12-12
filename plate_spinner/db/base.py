@@ -1,4 +1,4 @@
-class DaoBase(object):
+class Base(object):
     def session(self):
         pass
 

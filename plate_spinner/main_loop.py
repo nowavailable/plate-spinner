@@ -1,6 +1,8 @@
 import asyncio
 import time
-from .db.dao_factory import DaoFactory
+from .db.data_store_factory import DataStoreFactory
+from .db.jobqueue import JobQueue
+from .db.running import Running
 import yaml
 
 
@@ -32,8 +34,9 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=F
     config = get_config(config_path)
 
     # TODO: 接続先DBに対してもconfigの利用
-    dao = DaoFactory.get_instance(config)
-    db_session = dao.session()
+    data_store = DataStoreFactory.get_instance(config)
+    db_session = data_store.session()
+    data_store.store_runnning()
 
     # ループ
     loop = asyncio.get_event_loop()
@@ -41,6 +44,7 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=F
     while True:
         # configの読み直し
         config = get_config(config_path)
+        print(config)
 
         commands = []
         try:
@@ -55,6 +59,7 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=F
             # db_session.query
 
             # 同トランザクション内でupdate
+            # data_store.store_taken_at()
 
             pass
         except:
@@ -78,9 +83,11 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=F
         if check_overflow(current_job_count):
             wait_main_loop()
 
-        if dao.check_killswitch():
+        if data_store.check_killswitch():
             # TODO: 現在のキューとジョブ群の終了を待った上で。
             db_session.close()
             break
 
         print("1")
+
+    data_store.remove_runnning()

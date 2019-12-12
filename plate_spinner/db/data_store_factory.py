@@ -1,11 +1,11 @@
-from .dao_mysql import DaoMySQL
+from .mysql import MySQL
 
-class DaoFactory(object):
+class DataStoreFactory(object):
     _dao = None
 
     @classmethod
     def get_instance(cls, config):
         if not cls._dao:
-            cls._dao = DaoMySQL(config)
+            cls._dao = MySQL(config)
 
         return cls._dao
