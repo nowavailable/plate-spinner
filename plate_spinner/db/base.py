@@ -11,7 +11,7 @@ class Base(object):
         pass
 
 
-    def build_dequeue_query(self, specified_jobnames=[], sharding_keys=[]):
+    def build_dequeue_query(self, config, specified_jobnames=[], sharding_keys=[]):
         pass
 
 

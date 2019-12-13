@@ -9,9 +9,6 @@ class MySQL(Base):
     _engine = None
 
     def __init__(self, config):
-        # TODO: engineをインスタンス変数にして
-        # 渡されたconfigを利用するようにする。
-
         self.session = sessionmaker(bind=MySQL.get_engine(), expire_on_commit=False)
 
 
@@ -27,7 +24,7 @@ class MySQL(Base):
         pass
 
 
-    def build_dequeue_query(self, specified_jobnames=[], sharding_keys=[]):
+    def build_dequeue_query(self, config, specified_jobnames=[], sharding_keys=[]):
         pass
 
 
@@ -45,6 +42,7 @@ class MySQL(Base):
     @classmethod
     def get_engine(cls):
         if not cls._engine:
+            # TODO: 環境変数またはそれに代わる方式の利用
             cls._engine = create_engine('mysql+pymysql://root:@localhost/plate_spinner?charset=utf8mb4', echo=True)
 
         return cls._engine
