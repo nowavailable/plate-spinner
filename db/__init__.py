@@ -1,5 +1,5 @@
 from .session import Session
-
+from .base import Base
 from .episode import Episode
 from .episode_candidate import EpisodeCandidate
 from .pivot import Pivot

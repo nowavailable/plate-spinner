@@ -15,11 +15,19 @@ running_table = Table(
     Column("updated_at", DATETIME, nullable=False)
 )
 
+mode_table = Table(
+    "ps_modes", meta,
+    Column("id", BIGINT(unsigned=True), primary_key=True),
+    Column("mode", VARCHAR(255), nullable=False)
+)
+
 def upgrade(migrate_engine):
     meta.bind = migrate_engine
     running_table.create()
+    mode_table.create()
 
 
 def downgrade(migrate_engine):
     meta.bind = migrate_engine
+    mode_table.drop()
     running_table.drop()

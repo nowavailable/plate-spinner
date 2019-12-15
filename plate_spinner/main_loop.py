@@ -1,7 +1,7 @@
 import asyncio
 import time
 from .db.data_store_factory import DataStoreFactory
-from .db.jobqueue import JobQueue
+from .db.jobqueue_sun import JobQueueSun
 from .db.running import Running
 import yaml
 

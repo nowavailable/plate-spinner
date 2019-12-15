@@ -1,10 +1,10 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from .base import Base
+from .generic_dao import GenericDao
 
 
-# TODO: 継承ではなくMix-inで。MySQLはモデルからも使用されるので、DAOであってほしくないから。
-class MySQL(Base):
+# TODO: 継承ではなくMix-inで?
+class MySQL(GenericDao):
 
     _engine = None
 
