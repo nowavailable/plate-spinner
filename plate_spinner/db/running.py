@@ -1,12 +1,12 @@
-from .mysql import MySQL
-import sqlalchemy
-from sqlalchemy.ext.automap import automap_base
-AutoMap = automap_base()
+from sqlalchemy import Integer, String, DateTime, Boolean, Column
+from .base import Base
 
 
-class Running(AutoMap):
-    __tablename__ = 'pr_runnings'
-    # FIXME: 何故かprimary keyがautomapで検出されないので、手動で定義
-    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
-
-AutoMap.prepare(MySQL.get_engine(), reflect=True)
+class Running(Base):
+    __tablename__ = 'ps_runnings'
+    id = Column(Integer(), primary_key=True)
+    hostname = Column(String(), nullable=False)
+    process_id_str = Column(String(), nullable=False)
+    emergency = Column(Boolean(), nullable=False, default=False)
+    created_at = Column(DateTime(), nullable=False)
+    updated_at = Column(DateTime(), nullable=False)

@@ -1,12 +1,11 @@
 import asyncio
 import time
 from .db.data_store_factory import DataStoreFactory
-from .db.jobqueue import JobQueue
-from .db.running import Running
 import yaml
 
 
 cap = 50
+
 
 def check_overflow(current_job_count):
     if current_job_count >= cap:
@@ -30,64 +29,89 @@ def get_config(config_file_path):
 
 
 def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=False):
+    # config = get_config(config_path)
+    data_store = DataStoreFactory.get_instance()
+    db_session = data_store.session
 
-    config = get_config(config_path)
+    """
+    ジョブキューはふたつあり、そのいずれかのみを使うダブルビン方式。
+    なのでそのいずれを使うかを最初に判定・決定する必要がある。
+    """
+    data_store.check_mode()
 
-    # TODO: 接続先DBに対してもconfigの利用
-    data_store = DataStoreFactory.get_instance(config)
-    db_session = data_store.session()
-    data_store.store_runnning()
+    """
+    このプロセスの情報をRDBに記録しておく。そのレコードの emergency カラムを
+    FalseからTrueに更新すると、プロセスが停止させられる。
+    """
+    try:
+        data_store.store_runnning()
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
 
-    # ループ
-    loop = asyncio.get_event_loop()
-
+    loop = asyncio.get_event_loop() # asyncioのloop
+    prepare_to_exit = False         # 無限ループの停止信号
     while True:
-        # configの読み直し
-        config = get_config(config_path)
-        print(config)
+        # 停止信号が出るまで無限にループ
+        if not prepare_to_exit:
+            # configの読み直し
+            config = get_config(config_path)
+            print(config)
 
-        commands = []
-        try:
-            # デキューのためのSELECTクエリのwhere句には、
-            # ・ジョブの種別をデキューの段階で絞るか
-            # （=つまりある種のジョブのために独立したプロセスを動かすか）
-            # ・シャーディングキーの指定があるか
-            # のバリエーションがある。
-
-            # 何件かづつバルクで取得
-
-            # db_session.query
-
-            # 同トランザクション内でupdate
-            # data_store.store_taken_at()
-
-            pass
-        except:
-            db_session.rollback()
-            # db_session.close()
-            # raise
             commands = []
-            # TODO: レポーティング
-            continue
+            try:
+                # デキューのためのSELECTクエリのwhere句には、
+                # ・ジョブの種別をデキューの段階で絞るか
+                # （=つまりある種のジョブのために独立したプロセスを動かすか）
+                # ・シャーディングキーの指定があるか
+                # のバリエーションがある。
 
-        if len(commands) == 0:
-            wait_main_loop()
+                # 何件かづつバルクで取得
 
-        # commands をJOBとしてスケジューリング
-        for command in commands:
-            pass
+                # db_session.query
 
-        # # for debug
-        # current_job_count = 51
+                # 同トランザクション内でupdate
+                # data_store.store_taken_at()
+
+                pass
+            except Exception:
+                db_session.rollback()
+                # db_session.close()
+                # raise
+                commands = []
+                # TODO: レポーティング
+                continue
+
+            if len(commands) == 0:
+                wait_main_loop()
+
+            # commands をJOBとしてスケジューリング
+            for command in commands:
+                pass
+
+            if data_store.check_killswitch():
+                prepare_to_exit = True
+
+        """
+        現在実行中のジョブ数が、制限数以内であるかどうか。
+        制限を超えていたらメインループをしばらくsleep
+        """
         current_job_count = len(asyncio.all_tasks(loop))
         if check_overflow(current_job_count):
             wait_main_loop()
 
-        if data_store.check_killswitch():
-            # TODO: 現在のキューとジョブ群の終了を待った上で。
+        """
+        停止信号が出ていて且つ実行中のジョブが無くなったらメインループを終了
+        """
+        if prepare_to_exit and current_job_count == 0:
             db_session.close()
             break
 
-        print("1")
-
-    data_store.remove_runnning()
+    """
+    終了処理
+    """
+    try:
+        data_store.remove_runnning()
+        db_session.commit()
+    except Exception:
+        db_session.rollback()

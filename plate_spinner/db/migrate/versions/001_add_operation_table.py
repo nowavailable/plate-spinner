@@ -6,35 +6,85 @@ from sqlalchemy.schema import Index
 
 meta = MetaData()
 
-jobqueue_table = Table(
-    "ps_jobqueues", meta,
+jobqueue_sun_table = Table(
+    "ps_jobqueue_suns", meta,
     Column("id", BIGINT(unsigned=True), primary_key=True),
-    Column("job_name", VARCHAR(255), nullable=True),
+    Column("job_name", VARCHAR(255), nullable=False),
     # Column("job_type", SMALLINT(unsigned=True), nullable=False, default=0),
     Column("parameters", JSON, nullable=True),
     Column("sharding_keystr", VARCHAR(255), nullable=True),
     Column("ready_at", DATETIME, nullable=False),
-    Column("taken_at", DATETIME, nullable=True),
-    Column("taken_cont", SMALLINT(unsigned=True), nullable=False, default=0),
     Column("finished_at", DATETIME, nullable=True),
     #Column("return_value", JSON, nullable=True),
     Column("created_at", DATETIME, nullable=False)
 )
-jobqueue_index_1 = Index(
-    "idx_ps_jobqueues_keystr",
-    jobqueue_table.c.job_name,
-    jobqueue_table.c.sharding_keystr,
-    jobqueue_table.c.ready_at,
-    jobqueue_table.c.taken_at,
+jobqueue_sun_index_1 = Index(
+    "idx_ps_jobqueue_suns_keystr",
+    jobqueue_sun_table.c.job_name,
+    jobqueue_sun_table.c.sharding_keystr,
+    jobqueue_sun_table.c.ready_at,
     unique=False
 )
-jobqueue_index_2 = Index(
-    "idx_ps_jobqueues_finished",
-    jobqueue_table.c.finished_at,
+jobqueue_sun_index_2 = Index(
+    "idx_ps_jobqueue_suns_finished",
+    jobqueue_sun_table.c.finished_at,
     unique=False
 )
 
-# root_process_table = Table()
+job_taken_sun_table = Table(
+    "ps_job_taken_suns", meta,
+    Column("id", BIGINT(unsigned=True), primary_key=True),
+    Column("ps_jobqueue_sun_id", BIGINT(unsigned=True), nullable=False),
+    Column("created_at", DATETIME, nullable=False)
+)
+fkey_job_taken_sun_table = ForeignKeyConstraint(
+    [job_taken_sun_table.c.ps_jobqueue_sun_id], [jobqueue_sun_table.c.id]
+)
+job_taken_sun_index_1 = Index(
+    "idx_ps_job_taken_suns_ps_jobqueue_sun_id",
+    job_taken_sun_table.c.ps_jobqueue_sun_id,
+    unique=True
+)
+
+jobqueue_moon_table = Table(
+    "ps_jobqueue_moons", meta,
+    Column("id", BIGINT(unsigned=True), primary_key=True),
+    Column("job_name", VARCHAR(255), nullable=False),
+    # Column("job_type", SMALLINT(unsigned=True), nullable=False, default=0),
+    Column("parameters", JSON, nullable=True),
+    Column("sharding_keystr", VARCHAR(255), nullable=True),
+    Column("ready_at", DATETIME, nullable=False),
+    Column("finished_at", DATETIME, nullable=True),
+    Column("created_at", DATETIME, nullable=False)
+)
+jobqueue_moon_index_1 = Index(
+    "idx_ps_jobqueue_moons_keystr",
+    jobqueue_moon_table.c.job_name,
+    jobqueue_moon_table.c.sharding_keystr,
+    jobqueue_moon_table.c.ready_at,
+    unique=False
+)
+jobqueue_moon_index_2 = Index(
+    "idx_ps_jobqueue_moons_finished",
+    jobqueue_moon_table.c.finished_at,
+    unique=False
+)
+
+job_taken_moon_table = Table(
+    "ps_job_taken_moons", meta,
+    Column("id", BIGINT(unsigned=True), primary_key=True),
+    Column("ps_jobqueue_moon_id", BIGINT(unsigned=True), nullable=False),
+    Column("created_at", DATETIME, nullable=False)
+)
+fkey_job_taken_moon_table = ForeignKeyConstraint(
+    [job_taken_moon_table.c.ps_jobqueue_moon_id], [jobqueue_moon_table.c.id]
+)
+job_taken_moon_index_1 = Index(
+    "idx_ps_job_taken_moons_ps_jobqueue_moon_id",
+    job_taken_moon_table.c.ps_jobqueue_moon_id,
+    unique=True
+)
+
 
 # operation_table = Table(
 #     "ps_operations", meta,
@@ -106,7 +156,13 @@ jobqueue_index_2 = Index(
 def upgrade(migrate_engine):
     meta.bind = migrate_engine
 
-    jobqueue_table.create()
+    jobqueue_sun_table.create()
+    job_taken_sun_table.create()
+    fkey_job_taken_sun_table.create()
+
+    jobqueue_moon_table.create()
+    job_taken_moon_table.create()
+    fkey_job_taken_moon_table.create()
 
     # operation_table.create()
     # schedule_table.create()
@@ -119,9 +175,14 @@ def upgrade(migrate_engine):
 def downgrade(migrate_engine):
     meta.bind = migrate_engine
 
-    jobqueue_table.drop()
+    job_taken_moon_table.drop()
+    jobqueue_moon_table.drop()
+
+    job_taken_sun_table.drop()
+    jobqueue_sun_table.drop()
 
     # generated_job_table.drop()
     # looped_operation_table.drop()
     # schedule_table.drop()
     # operation_table.drop()
+
