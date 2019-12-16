@@ -4,8 +4,8 @@ class DataStoreFactory(object):
     _dao = None
 
     @classmethod
-    def get_instance(cls, config):
+    def get_instance(cls):
         if not cls._dao:
-            cls._dao = MySQL(config)
+            cls._dao = MySQL()
 
         return cls._dao
