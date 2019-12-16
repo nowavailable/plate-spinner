@@ -10,4 +10,3 @@ class JobTakenSun(Base):
     jobqueue = relationship("JobQueueSun")
 
     created_at = Column(DateTime(), nullable=False)
-
