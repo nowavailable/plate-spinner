@@ -3,8 +3,7 @@ import time
 from .db.data_store_factory import DataStoreFactory
 import yaml
 
-
-cap = 50
+cap: int = 50
 
 
 def check_overflow(current_job_count):
@@ -54,7 +53,9 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=F
     while True:
         # 停止信号が出るまで無限にループ
         if not prepare_to_exit:
-            # configの読み直し
+            """
+            configはたまに読み直す
+            """
             config = get_config(config_path)
             print(config)
 
@@ -65,21 +66,28 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=F
                 # （=つまりある種のジョブのために独立したプロセスを動かすか）
                 # ・シャーディングキーの指定があるか
                 # のバリエーションがある。
-
                 # 何件かづつバルクで取得
-
-                # db_session.query
-
+                dequeues = data_store.dequeue(
+                    specified_jobnames=specified_jobnames,
+                    sharding_keys=sharding_keys
+                )
                 # 同トランザクション内でupdate
-                # data_store.store_taken_at()
+                if len(dequeues) > 0:
+                    data_store.store_taken_at(dequeues)
+                    db_session.commit()
 
-                pass
-            except Exception:
+                    # commandsへと昇華。
+
+
+
+            except Exception as e:
                 db_session.rollback()
                 # db_session.close()
                 # raise
-                commands = []
                 # TODO: レポーティング
+                # print(e)
+
+                commands = []
                 continue
 
             if len(commands) == 0:

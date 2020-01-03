@@ -1,3 +1,5 @@
+from datetime import datetime
+
 class GenericDao(object):
     def session(self):
         pass
@@ -11,10 +13,10 @@ class GenericDao(object):
     def remove_runnning(self):
         pass
 
-    def build_dequeue_query(self, config, specified_jobnames=[], sharding_keys=[]):
+    def dequeue(self, specified_jobnames=[], sharding_keys=[], limit=5):
         pass
 
-    def store_taken_at(self):
+    def store_taken_at(self, dequeued_list):
         pass
 
     def store_finished_at(self):

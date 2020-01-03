@@ -2,9 +2,14 @@ import os
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import and_, or_, not_
 from .generic_dao import GenericDao
 from .mode import Mode
 from .running import Running
+from .jobqueue_sun import JobQueueSun
+from .jobqueue_moon import JobQueueMoon
+from .job_taken_sun import JobTakenSun
+from .job_taken_moon import JobTakenMoon
 
 
 # TODO: 継承ではなくMix-inで?
@@ -19,6 +24,16 @@ class MySQL(GenericDao):
             expire_on_commit=False
         )()
         self.mode = self.__class__._mode[0]
+
+    def get_entities(self):
+        if self.mode == self.__class__._mode[0]:
+            entity = JobQueueSun
+            taken_entity = JobTakenSun
+        else:
+            entity = JobTakenMoon
+            taken_entity = JobTakenMoon
+
+        return [entity, taken_entity]
 
     """
     制御テーブルである modes テーブルに、一行のレコードが予め登録されていることを期待する。
@@ -52,11 +67,48 @@ class MySQL(GenericDao):
         if len(runnings) > 0:
             self.session.delete(runnings[0])
 
-    def build_dequeue_query(self, config, specified_jobnames=[], sharding_keys=[]):
-        pass
+    def dequeue(self, specified_jobnames=[], sharding_keys=[], limit=5):
+        entity, taken_entity = self.get_entities()
 
-    def store_taken_at(self):
-        pass
+        if self.mode == self.__class__._mode[0]:
+            entity = JobQueueSun
+            taken_entity = JobTakenSun
+        else:
+            entity = JobTakenMoon
+            taken_entity = JobTakenMoon
+
+        now = datetime.now()
+        where_list = []
+        if len(specified_jobnames) > 0:
+            where_list = list(
+                map(lambda jobname: (entity.job_name == jobname), specified_jobnames)
+            )
+        if len(sharding_keys) > 0:
+            where_list += list(
+                map(lambda sharding_key: (entity.sharding_keystr == sharding_key), sharding_keys)
+            )
+        if len(where_list) > 0:
+            where_list = [entity.job_name != ""]
+
+        return self.session.query(entity). \
+            outerjoin(taken_entity). \
+            filter(and_(
+                entity.ready_at < now,
+                entity.finished_at == None,
+                taken_entity.id == None
+            )). \
+            filter(or_(*where_list)). \
+            limit(limit).all()
+
+    def store_taken_at(self, dequeued_list):
+        entity, taken_entity = self.get_entities()
+        now = datetime.now()
+        for jobqueue in dequeued_list:
+            associated = taken_entity(
+                jobqueue = jobqueue,
+                created_at = now
+            )
+            self.session.add(associated)
 
     def store_finished_at(self):
         pass
