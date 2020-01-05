@@ -1,14 +1,11 @@
+import sys
 import asyncio
 import time
 from .db.data_store_factory import DataStoreFactory
 import yaml
+import importlib
 
 cap: int = 50
-
-
-def check_overflow(current_job_count):
-    if current_job_count >= cap:
-        wait_main_loop()
 
 
 def wait_main_loop():
@@ -19,25 +16,24 @@ def wait_main_loop():
 
 def get_config(config_file_path):
     config = None
-
     if config_file_path:
         with open(config_file_path) as config_file:
-            config = yaml.load(config_file)
-
+            config = yaml.load(config_file, Loader=yaml.FullLoader)
     return config
 
 
+"""
+RDBに登録されたジョブを複数件ずつ取り出し、asyncioのloopに渡して処理する。
+"""
 def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=False):
-    # config = get_config(config_path)
+    config = get_config(config_path)
     data_store = DataStoreFactory.get_instance()
     db_session = data_store.session
-
     """
     ジョブキューはふたつあり、そのいずれかのみを使うダブルビン方式。
     なのでそのいずれを使うかを最初に判定・決定する必要がある。
     """
     data_store.check_mode()
-
     """
     このプロセスの情報をRDBに記録しておく。そのレコードの emergency カラムを
     FalseからTrueに更新すると、プロセスが停止させられる。
@@ -48,16 +44,16 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=F
     except Exception:
         db_session.rollback()
 
-    loop = asyncio.get_event_loop() # asyncioのloop
-    prepare_to_exit = False         # 無限ループの停止信号
+    prepare_to_exit = False # 無限ループの停止信号
     while True:
+        loop = asyncio.get_event_loop()
+
         # 停止信号が出るまで無限にループ
         if not prepare_to_exit:
             """
             configはたまに読み直す
             """
             config = get_config(config_path)
-            print(config)
 
             commands = []
             try:
@@ -69,52 +65,50 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=F
                 # 何件かづつバルクで取得
                 dequeues = data_store.dequeue(
                     specified_jobnames=specified_jobnames,
-                    sharding_keys=sharding_keys
+                    sharding_keys=sharding_keys,
+                    limit=cap
                 )
                 # 同トランザクション内でupdate
                 if len(dequeues) > 0:
                     data_store.store_taken_at(dequeues)
                     db_session.commit()
 
-                    # commandsへと昇華。
-
-
+                    """
+                    dequeueしたレコードからcommamdsを導出
+                    """
+                    for jobqueue in dequeues:
+                        m = importlib.import_module("jobs." + jobqueue.job_name)
+                        commands.append(m.perform())
 
             except Exception as e:
                 db_session.rollback()
                 # db_session.close()
                 # raise
                 # TODO: レポーティング
-                # print(e)
-
+                print(e)
+                loop.close()
                 commands = []
                 continue
 
             if len(commands) == 0:
                 wait_main_loop()
 
-            # commands をJOBとしてスケジューリング
-            for command in commands:
-                pass
+            """
+            commandsをJOBとしてスケジューリング
+            """
+            if len(commands) > 0 and not loop.is_running():
+                loop.run_until_complete(asyncio.wait(commands))
 
             if data_store.check_killswitch():
                 prepare_to_exit = True
 
-        """
-        現在実行中のジョブ数が、制限数以内であるかどうか。
-        制限を超えていたらメインループをしばらくsleep
-        """
-        current_job_count = len(asyncio.all_tasks(loop))
-        if check_overflow(current_job_count):
-            wait_main_loop()
-
+        loop.close()
         """
         停止信号が出ていて且つ実行中のジョブが無くなったらメインループを終了
         """
-        if prepare_to_exit and current_job_count == 0:
+        if prepare_to_exit:
             db_session.close()
             break
-
     """
     終了処理
     """
