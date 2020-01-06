@@ -25,7 +25,9 @@ def get_config(config_file_path):
 """
 RDBに登録されたジョブを複数件ずつ取り出し、asyncioのloopに渡して処理する。
 """
-def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=False):
+
+
+def main_loop(config_path, specified_jobnames=[], sharding_keys=[], start_with_jobs=False, foreground=False):
     config = get_config(config_path)
     data_store = DataStoreFactory.get_instance()
     db_session = data_store.session
@@ -39,7 +41,9 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=F
     FalseからTrueに更新すると、プロセスが停止させられる。
     """
     try:
-        data_store.store_runnning()
+        data_store.store_runnning(
+            config if start_with_jobs else None
+        )
         db_session.commit()
     except Exception:
         db_session.rollback()
@@ -72,7 +76,6 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=F
                 if len(dequeues) > 0:
                     data_store.store_taken_at(dequeues)
                     db_session.commit()
-
                     """
                     dequeueしたレコードからcommamdsを導出
                     """
@@ -109,9 +112,8 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], foreground=F
         if prepare_to_exit:
             db_session.close()
             break
-    """
-    終了処理
-    """
+
+    # 終了処理
     try:
         data_store.remove_runnning()
         db_session.commit()

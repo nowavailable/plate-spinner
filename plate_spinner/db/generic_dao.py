@@ -7,7 +7,7 @@ class GenericDao(object):
     def check_mode(self):
         pass
 
-    def store_runnning(self):
+    def store_runnning(self, config):
         pass
 
     def remove_runnning(self):
