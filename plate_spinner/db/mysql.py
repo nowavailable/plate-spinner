@@ -57,6 +57,7 @@ class MySQL(GenericDao):
         self.check_mode()
         if running.mode != self.mode:
             running.mode = self.mode
+            running.updated_at = datetime.now()
             self.mode_switched_completely = True
         return self.mode_switched_completely
 
