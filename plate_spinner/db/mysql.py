@@ -66,7 +66,7 @@ class MySQL(GenericDao):
         running = Running(
             hostname=os.uname()[1],
             process_id_str=("%s" % os.getpid()),
-            mode = self.mode,
+            mode=self.mode,
             created_at=now,
             updated_at=now
         )
@@ -80,7 +80,7 @@ class MySQL(GenericDao):
         runnings = self.session.query(Running).filter(
             Running.hostname == os.uname()[1],
             Running.process_id_str == ("%s" % os.getpid()),
-            Running.emergency == True
+            Running.emergency is True
         ).all()
         if len(runnings) > 0:
             self.session.delete(runnings[0])
@@ -105,8 +105,8 @@ class MySQL(GenericDao):
             outerjoin(taken_entity). \
             filter(and_(
                 entity.ready_at < now,
-                entity.finished_at == None,
-                taken_entity.id == None
+                entity.finished_at is None,
+                taken_entity.id is None
             )). \
             filter(or_(*where_list)). \
             limit(limit).all()
@@ -119,10 +119,10 @@ class MySQL(GenericDao):
             another_results = self.session.query(another_entity). \
                 outerjoin(another_taken_entity). \
                 filter(and_(
-                another_entity.ready_at < now,
-                another_entity.finished_at == None,
-                another_taken_entity.id == None
-            )). \
+                    another_entity.ready_at < now,
+                    another_entity.finished_at is None,
+                    another_taken_entity.id is None
+                )). \
                 filter(or_(*where_list)). \
                 limit(limit).all()
 
@@ -133,7 +133,7 @@ class MySQL(GenericDao):
                 # すべてのrunningsレコードが現在のmodeを指している
                 # 場合、「確実に空」と判定する。
                 all_runnings = self.session.query(Running).\
-                    filter(Running.mode != self.mode, Running.emergency == False).\
+                    filter(Running.mode != self.mode, Running.emergency is False).\
                     all()
                 if len(all_runnings) == 0:
                     self.mode_switched_completely = True
@@ -151,8 +151,8 @@ class MySQL(GenericDao):
                 e = another_taken_entity
 
             associated = e(
-                jobqueue = jobqueue,
-                created_at = now
+                jobqueue=jobqueue,
+                created_at=now
             )
             self.session.add(associated)
 

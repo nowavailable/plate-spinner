@@ -49,14 +49,14 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], start_with_j
     except Exception:
         db_session.rollback()
 
-    prepare_to_exit = False # 無限ループの停止信号
+    prepare_to_exit = False  # 無限ループの停止信号
     while True:
         loop = asyncio.get_event_loop()
 
         # 停止信号が出るまで無限にループ
         if not prepare_to_exit:
             """
-            configはたまに読み直す
+            configやmodeはたまに読み直す
             """
             config = get_config(config_path)
             try:
