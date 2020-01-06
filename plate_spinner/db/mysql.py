@@ -30,7 +30,7 @@ class MySQL(GenericDao):
             entity = JobQueueSun
             taken_entity = JobTakenSun
         else:
-            entity = JobTakenMoon
+            entity = JobQueueMoon
             taken_entity = JobTakenMoon
 
         return [entity, taken_entity]
