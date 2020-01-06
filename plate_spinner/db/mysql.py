@@ -47,7 +47,7 @@ class MySQL(GenericDao):
             raise RuntimeError("Specify mode either `Sun` or `Moon`.")
         self.mode = mode_rows[0].mode
 
-    def store_runnning(self):
+    def store_runnning(self, config):
         now = datetime.now()
         running = Running(
             hostname=os.uname()[1],
@@ -74,7 +74,7 @@ class MySQL(GenericDao):
             entity = JobQueueSun
             taken_entity = JobTakenSun
         else:
-            entity = JobTakenMoon
+            entity = JobQueueMoon
             taken_entity = JobTakenMoon
 
         now = datetime.now()
