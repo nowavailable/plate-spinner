@@ -24,16 +24,21 @@ class MySQL(GenericDao):
             expire_on_commit=False
         )()
         self.mode = self.__class__._mode[0]
+        self.mode_switched_completely = False
 
-    def get_entities(self):
+    def get_entities_by_mode(self):
         if self.mode == self.__class__._mode[0]:
             entity = JobQueueSun
             taken_entity = JobTakenSun
+            another_entity = JobQueueMoon
+            another_taken_entity = JobTakenMoon
         else:
             entity = JobQueueMoon
             taken_entity = JobTakenMoon
+            another_entity = JobQueueSun
+            another_taken_entity = JobTakenSun
 
-        return [entity, taken_entity]
+        return [entity, taken_entity, another_entity, another_taken_entity]
 
     """
     制御テーブルである modes テーブルに、一行のレコードが予め登録されていることを期待する。
@@ -46,17 +51,29 @@ class MySQL(GenericDao):
         if mode_rows[0].mode not in __class__._mode:
             raise RuntimeError("Specify mode either `Sun` or `Moon`.")
         self.mode = mode_rows[0].mode
+        self.mode_switched_completely = False
+
+    def check_mode_in_running(self, running):
+        self.check_mode()
+        if running.mode != self.mode:
+            running.mode = self.mode
+            self.mode_switched_completely = True
+        return self.mode_switched_completely
 
     def store_running(self, config):
         now = datetime.now()
         running = Running(
             hostname=os.uname()[1],
             process_id_str=("%s" % os.getpid()),
+            mode = self.mode,
             created_at=now,
             updated_at=now
         )
         self.session.add(running)
+
         # TODO: ログへの書き出し。ひいてはログの設計。
+
+        return running
 
     def remove_running(self):
         runnings = self.session.query(Running).filter(
@@ -68,14 +85,7 @@ class MySQL(GenericDao):
             self.session.delete(runnings[0])
 
     def dequeue(self, specified_jobnames=[], sharding_keys=[], limit=5):
-        entity, taken_entity = self.get_entities()
-
-        if self.mode == self.__class__._mode[0]:
-            entity = JobQueueSun
-            taken_entity = JobTakenSun
-        else:
-            entity = JobQueueMoon
-            taken_entity = JobTakenMoon
+        entity, taken_entity, another_entity, another_taken_entity = self.get_entities_by_mode()
 
         now = datetime.now()
         where_list = []
@@ -90,7 +100,7 @@ class MySQL(GenericDao):
         if len(where_list) > 0:
             where_list = [entity.job_name != ""]
 
-        return self.session.query(entity). \
+        results = self.session.query(entity). \
             outerjoin(taken_entity). \
             filter(and_(
                 entity.ready_at < now,
@@ -100,11 +110,46 @@ class MySQL(GenericDao):
             filter(or_(*where_list)). \
             limit(limit).all()
 
+        """
+        ふたつのキューのどちらを見るかはmodeによって決定されるが、
+        現在指定されたキューでないほうのキューも、確実に空になるまでは内容をチェックする
+        """
+        if not self.mode_switched_completely:
+            another_results = self.session.query(another_entity). \
+                outerjoin(another_taken_entity). \
+                filter(and_(
+                another_entity.ready_at < now,
+                another_entity.finished_at == None,
+                another_taken_entity.id == None
+            )). \
+                filter(or_(*where_list)). \
+                limit(limit).all()
+
+            if len(another_results) > 0:
+                results += another_results
+            else:
+                # 現在指定されたキューでないほうのキューが空で且つ
+                # すべてのrunningsレコードが現在のmodeを指している
+                # 場合、「確実に空」と判定する。
+                all_runnings = self.session.query(Running).\
+                    filter(Running.mode != self.mode, Running.emergency == False).\
+                    all()
+                if len(all_runnings) == 0:
+                    self.mode_switched_completely = True
+
+        return results
+
     def store_taken_at(self, dequeued_list):
-        entity, taken_entity = self.get_entities()
+        entity, taken_entity, another_entity, another_taken_entity = self.get_entities_by_mode()
         now = datetime.now()
         for jobqueue in dequeued_list:
-            associated = taken_entity(
+            e = None
+            if type(jobqueue) == entity:
+                e = taken_entity
+            elif type(jobqueue) == another_entity:
+                e = another_taken_entity
+
+            associated = e(
                 jobqueue = jobqueue,
                 created_at = now
             )

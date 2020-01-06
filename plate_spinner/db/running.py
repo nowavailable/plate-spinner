@@ -8,5 +8,6 @@ class Running(Base):
     hostname = Column(String(), nullable=False)
     process_id_str = Column(String(), nullable=False)
     emergency = Column(Boolean(), nullable=False, default=False)
+    mode = Column(String(), nullable=False)
     created_at = Column(DateTime(), nullable=False)
     updated_at = Column(DateTime(), nullable=False)

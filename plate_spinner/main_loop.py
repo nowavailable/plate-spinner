@@ -40,8 +40,9 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], start_with_j
     このプロセスの情報をRDBに記録しておく。そのレコードの emergency カラムを
     FalseからTrueに更新すると、プロセスが停止させられる。
     """
+    running = None
     try:
-        data_store.store_running(
+        running = data_store.store_running(
             config if start_with_jobs else None
         )
         db_session.commit()
@@ -58,6 +59,12 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], start_with_j
             configはたまに読み直す
             """
             config = get_config(config_path)
+            try:
+                must_persist = data_store.check_mode_in_running(running=running)
+                if must_persist:
+                    db_session.commit()
+            except Exception:
+                db_session.rollback()
 
             commands = []
             try:
