@@ -47,7 +47,7 @@ class MySQL(GenericDao):
             raise RuntimeError("Specify mode either `Sun` or `Moon`.")
         self.mode = mode_rows[0].mode
 
-    def store_runnning(self, config):
+    def store_running(self, config):
         now = datetime.now()
         running = Running(
             hostname=os.uname()[1],
@@ -58,7 +58,7 @@ class MySQL(GenericDao):
         self.session.add(running)
         # TODO: ログへの書き出し。ひいてはログの設計。
 
-    def remove_runnning(self):
+    def remove_running(self):
         runnings = self.session.query(Running).filter(
             Running.hostname == os.uname()[1],
             Running.process_id_str == ("%s" % os.getpid()),

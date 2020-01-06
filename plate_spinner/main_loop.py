@@ -41,7 +41,7 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], start_with_j
     FalseからTrueに更新すると、プロセスが停止させられる。
     """
     try:
-        data_store.store_runnning(
+        data_store.store_running(
             config if start_with_jobs else None
         )
         db_session.commit()
@@ -115,7 +115,7 @@ def main_loop(config_path, specified_jobnames=[], sharding_keys=[], start_with_j
 
     # 終了処理
     try:
-        data_store.remove_runnning()
+        data_store.remove_running()
         db_session.commit()
     except Exception:
         db_session.rollback()

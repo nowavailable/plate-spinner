@@ -7,10 +7,10 @@ class GenericDao(object):
     def check_mode(self):
         pass
 
-    def store_runnning(self, config):
+    def store_running(self, config):
         pass
 
-    def remove_runnning(self):
+    def remove_running(self):
         pass
 
     def dequeue(self, specified_jobnames=[], sharding_keys=[], limit=5):
